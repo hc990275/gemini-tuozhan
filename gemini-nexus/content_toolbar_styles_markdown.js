@@ -1,5 +1,4 @@
 
-
 // content_toolbar_styles_markdown.js
 (function() {
     window.GeminiStylesMarkdown = `
@@ -138,7 +137,6 @@
         .spinner-container {
             display: flex;
             justify-content: center;
-            align-items: center;
             padding: 20px;
         }
         .spinner-container.hidden { display: none; }
@@ -152,13 +150,6 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .loading-text {
-            margin-left: 10px;
-            color: #8e918f;
-            font-size: 13px;
-            font-weight: 500;
-        }
 
         /* Floating Footer */
         .footer-overlay {
@@ -169,6 +160,7 @@
             display: flex;
             justify-content: center;
             pointer-events: none; /* Let clicks pass through container */
+            z-index: 100; /* Ensure high z-index to stay above content */
         }
         .footer-overlay.hidden { display: none; }
         

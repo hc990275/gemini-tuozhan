@@ -1,4 +1,5 @@
 
+
 // content_toolbar.js
 
 class FloatingToolbar {
@@ -58,6 +59,19 @@ class FloatingToolbar {
     }
 
     handleAction(actionType, data) {
+        // --- Copy Selection ---
+        if (actionType === 'copy_selection') {
+            if (this.currentSelection) {
+                navigator.clipboard.writeText(this.currentSelection)
+                    .then(() => this.ui.showCopySelectionFeedback(true))
+                    .catch((err) => {
+                        console.error("Failed to copy text:", err);
+                        this.ui.showCopySelectionFeedback(false);
+                    });
+            }
+            return;
+        }
+
         // --- Image Analysis ---
         if (actionType === 'image_analyze') {
             const img = this.imageDetector.getCurrentImage();

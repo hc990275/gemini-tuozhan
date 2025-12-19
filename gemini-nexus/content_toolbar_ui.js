@@ -1,4 +1,5 @@
 
+
 // content_toolbar_ui.js
 
 (function() {
@@ -156,6 +157,14 @@
 
         setAskInputValue(text) {
             this.view.setInputValue(text);
+        }
+
+        // New Feedback method
+        showCopySelectionFeedback(success) {
+             this.view.toggleCopySelectionIcon(success);
+             setTimeout(() => {
+                 this.view.toggleCopySelectionIcon(null); 
+             }, 2000);
         }
 
         isVisible() {

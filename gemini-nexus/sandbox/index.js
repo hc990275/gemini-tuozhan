@@ -1,13 +1,11 @@
 
-
-
-// sandbox.js
-import { ImageManager } from './image_manager.js';
+// sandbox/index.js
+import { ImageManager } from '../image_manager.js';
 import { SessionManager } from './session_manager.js';
-import { UIController } from './ui_controller.js';
-import { AppController } from './app_controller.js';
-import { sendToBackground, requestSessionsFromStorage } from './messaging.js';
-import { renderAppLayout } from './ui_layout.js';
+import { UIController } from '../ui_controller.js';
+import { AppController } from '../app_controller.js';
+import { sendToBackground, requestSessionsFromStorage } from '../messaging.js';
+import { renderAppLayout } from '../ui_layout.js';
 
 // --- Initialization ---
 

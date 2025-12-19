@@ -1,4 +1,5 @@
 
+
 // content_toolbar_ui_events.js
 (function() {
     class ToolbarEvents {
@@ -16,6 +17,7 @@
             const { buttons, imageBtn, askInput, askHeader } = elements;
 
             // --- Toolbar Buttons ---
+            this._add(buttons.copySelection, 'mousedown', (e) => this.controller.triggerAction(e, 'copy_selection'));
             this._add(buttons.ask, 'mousedown', (e) => this.controller.triggerAction(e, 'ask'));
             this._add(buttons.translate, 'mousedown', (e) => this.controller.triggerAction(e, 'translate'));
             this._add(buttons.explain, 'mousedown', (e) => this.controller.triggerAction(e, 'explain'));

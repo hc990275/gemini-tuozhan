@@ -1,5 +1,4 @@
 
-
 // content_toolbar_view_window.js
 (function() {
     const Utils = window.GeminiViewUtils;
@@ -79,12 +78,6 @@
             this.elements.resultText.innerHTML = ''; // Clear previous
             this.elements.loadingSpinner.classList.remove('hidden');
             
-            // Show Status Text
-            if (this.elements.loadingText) {
-                this.elements.loadingText.textContent = msg;
-                this.elements.loadingText.style.display = 'block';
-            }
-            
             // Show Footer with Stop button, hide Continue
             this.elements.footerOverlay.classList.remove('hidden');
             if (this.elements.buttons.stop) this.elements.buttons.stop.classList.remove('hidden');
@@ -112,11 +105,6 @@
             if (isStreaming) {
                 // Streaming: Show Spinner, Show Stop, Hide Continue/Copy
                 this.elements.loadingSpinner.classList.remove('hidden');
-                
-                // Hide status text if we have content
-                if (this.elements.loadingText) {
-                    this.elements.loadingText.style.display = text ? 'none' : 'block';
-                }
                 
                 this.elements.footerOverlay.classList.remove('hidden');
                 if (this.elements.buttons.stop) this.elements.buttons.stop.classList.remove('hidden');

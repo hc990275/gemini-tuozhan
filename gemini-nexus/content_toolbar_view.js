@@ -32,11 +32,11 @@
                 resultArea: get('result-area'),
                 resultText: get('result-text'),
                 loadingSpinner: get('loading-spinner'),
-                loadingText: get('loading-text'),
                 footerOverlay: get('footer-overlay'),
                 
                 // Buttons
                 buttons: {
+                    copySelection: get('btn-copy'),
                     ask: get('btn-ask'),
                     translate: get('btn-translate'),
                     explain: get('btn-explain'),
@@ -55,6 +55,7 @@
         showImageButton(rect) { this.widgetView.showImageButton(rect); }
         hideImageButton() { this.widgetView.hideImageButton(); }
         isToolbarVisible() { return this.widgetView.isToolbarVisible(); }
+        toggleCopySelectionIcon(success) { this.widgetView.toggleCopySelectionIcon(success); }
 
         // --- Delegation to Window View ---
 

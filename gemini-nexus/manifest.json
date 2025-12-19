@@ -2,7 +2,7 @@
 {
   "manifest_version": 3,
   "name": "Gemini Nexus",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "permissions": ["sidePanel", "storage", "contextMenus"],
   "host_permissions": [
     "https://gemini.google.com/*",
@@ -10,7 +10,7 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "background/index.js",
     "type": "module"
   },
   "icons": {
@@ -42,7 +42,7 @@
     {
       "matches": ["<all_urls>"],
       "js": [
-        "content_overlay.js", 
+        "content/overlay.js", 
         "content_observer.js", 
         "content_toolbar_icons.js",
         "content_toolbar_styles_core.js",
@@ -66,7 +66,7 @@
         "content_toolbar_image.js",
         "content_toolbar_stream.js", 
         "content_toolbar.js", 
-        "content.js"
+        "content/index.js"
       ],
       "run_at": "document_end"
     }

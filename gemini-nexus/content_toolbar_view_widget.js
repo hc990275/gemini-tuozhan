@@ -1,4 +1,5 @@
 
+
 // content_toolbar_view_widget.js
 (function() {
     const Utils = window.GeminiViewUtils;
@@ -41,6 +42,19 @@
 
         isToolbarVisible() {
             return (this.elements.toolbar && this.elements.toolbar.classList.contains('visible'));
+        }
+
+        toggleCopySelectionIcon(success) {
+            const btn = this.elements.buttons.copySelection;
+            if (!btn) return;
+
+            const ICONS = window.GeminiToolbarIcons;
+            if (success === true) {
+                btn.innerHTML = `${ICONS.CHECK} Copied`;
+            } else {
+                // Revert to default
+                btn.innerHTML = `${ICONS.COPY} Copy`;
+            }
         }
     }
 

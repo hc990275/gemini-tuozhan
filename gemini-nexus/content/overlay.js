@@ -1,4 +1,5 @@
-// content_overlay.js
+
+// content_overlay.js -> content/overlay.js
 
 class SelectionOverlay {
     constructor() {

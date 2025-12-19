@@ -1,6 +1,6 @@
 
-// session_manager.js
-import { generateUUID } from './utils.js';
+// sandbox/session_manager.js
+import { generateUUID } from '../utils.js';
 
 export class SessionManager {
     constructor() {

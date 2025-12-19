@@ -24,113 +24,83 @@
                 height = isLargerWindow ? 300 : 40;
             }
 
-            let left, top;
+            const padding = 10;
+            const offset = 12; // Gap between mouse/selection and toolbar
 
-            // --- Logic for Small Toolbar (Mouse Cursor Based) ---
-            if (!isLargerWindow && mousePoint) {
-                const offset = 12; // Distance from cursor
-                
-                // Default: Bottom Right of cursor
-                let relLeft = mousePoint.x + offset;
-                let relTop = mousePoint.y + offset;
-                
-                el.classList.remove('placed-top', 'placed-bottom');
-                
-                // Boundary Check: Right Edge
-                if (relLeft + width > vw) {
-                    // Flip to Left of cursor
-                    relLeft = mousePoint.x - width - offset;
-                }
+            // Determine Anchor Point
+            // Prioritize Mouse Point for "Bottom Right of Mouse" style
+            let anchorX, anchorY;
 
-                // Boundary Check: Bottom Edge
-                if (relTop + height > vh) {
-                    // Flip to Top of cursor
-                    relTop = mousePoint.y - height - offset;
-                    el.classList.add('placed-top'); // Updates arrow style if applicable
-                } else {
-                    el.classList.add('placed-bottom');
-                }
-
-                // Hard Stop for Left/Top edges (prevent going off-screen top-left)
-                if (relLeft < 0) relLeft = 0;
-                if (relTop < 0) relTop = 0;
-
-                left = relLeft + scrollX;
-                top = relTop + scrollY;
-            } 
-            
-            // --- Logic for Ask Window or Fallback (Rect Based) ---
-            else if (isLargerWindow) {
-                // --- Ask Window (Fixed Positioning) ---
-                // We use viewport coordinates directly (no scroll offsets)
-                
-                // Horizontal: Align left, clamp to viewport
-                let relLeft = rect.left;
-                // Constraints: margin 10px
-                const maxLeft = vw - width - 10;
-                const minLeft = 10;
-                
-                // Clamp
-                relLeft = Math.min(Math.max(relLeft, minLeft), maxLeft);
-                
-                left = relLeft;
-
-                // Vertical: Try Below -> Above -> Clamp
-                // Margin 10px
-                const spaceBelow = vh - rect.bottom;
-                const spaceAbove = rect.top;
-                
-                let relTop;
-                
-                // Preference: Below
-                if (spaceBelow >= height + 10) {
-                    relTop = rect.bottom + 10;
-                } 
-                // Fallback: Above
-                else if (spaceAbove >= height + 10) {
-                    relTop = rect.top - height - 10;
-                } 
-                // Fallback: Whichever has more space, clamped
-                else {
-                    if (spaceBelow >= spaceAbove) {
-                        // Put below, clamped to bottom
-                        relTop = vh - height - 10;
-                    } else {
-                        // Put above, clamped to top
-                        relTop = 10;
-                    }
-                }
-                
-                top = relTop;
-
+            if (mousePoint) {
+                anchorX = mousePoint.x;
+                anchorY = mousePoint.y;
+            } else if (rect) {
+                // Fallback to rect bottom-right if no mouse point provided
+                anchorX = rect.right;
+                anchorY = rect.bottom;
             } else {
-                // --- Fallback for Toolbar if no mousePoint provided (original logic) ---
-                // Vertical: Default to Bottom
-                let relTop = rect.bottom + 12;
-                let positionClass = 'placed-bottom';
-
-                if (relTop + height > vh) {
-                    relTop = rect.top - height - 12;
-                    positionClass = 'placed-top';
-                }
-                
-                top = relTop + scrollY;
-                
-                el.classList.remove('placed-top', 'placed-bottom');
-                el.classList.add(positionClass);
-
-                // Horizontal: Align with Right Edge
-                let relLeft = rect.right;
-                const halfW = width / 2;
-                const maxCenter = vw - halfW - 10;
-                const minCenter = halfW + 10;
-                
-                relLeft = Math.min(Math.max(relLeft, minCenter), maxCenter);
-                left = relLeft + scrollX;
+                anchorX = vw / 2;
+                anchorY = vh / 2;
             }
 
-            el.style.left = `${left}px`;
-            el.style.top = `${top}px`;
+            // --- Calculate Visual Position (Top-Left corner of Element) ---
+            
+            // Default Preference: Bottom-Right of Cursor
+            let visualLeft = anchorX + offset;
+            let visualTop = anchorY + offset;
+
+            // --- Horizontal Boundary Logic ---
+            // If toolbar extends past right edge
+            if (visualLeft + width > vw - padding) {
+                // Flip to Left of Cursor
+                visualLeft = anchorX - width - offset;
+
+                // If flipping left pushes it off left screen (e.g. huge element or very left cursor)
+                if (visualLeft < padding) {
+                    visualLeft = vw - width - padding; // Pin to right edge of screen
+                }
+            }
+
+            // --- Vertical Boundary Logic ---
+            // If toolbar extends past bottom edge
+            if (visualTop + height > vh - padding) {
+                // Flip to Top of Cursor
+                visualTop = anchorY - height - offset;
+                
+                // Update arrow classes for Small Toolbar
+                if (!isLargerWindow) {
+                    el.classList.remove('placed-bottom');
+                    el.classList.add('placed-top');
+                }
+
+                // If flipping top pushes it off top screen
+                if (visualTop < padding) {
+                    visualTop = vh - height - padding; // Pin to bottom edge of screen
+                }
+            } else {
+                // Default: Placed Bottom
+                if (!isLargerWindow) {
+                    el.classList.remove('placed-top');
+                    el.classList.add('placed-bottom');
+                }
+            }
+
+            // --- Apply Coordinates ---
+            
+            if (!isLargerWindow) {
+                // Small Toolbar: CSS has transform: translateX(-50%)
+                // So style.left needs to be the CENTER of the visual element.
+                // Center = VisualLeft + Width/2
+                
+                const centerX = visualLeft + (width / 2);
+                
+                el.style.left = `${centerX + scrollX}px`;
+                el.style.top = `${visualTop + scrollY}px`;
+            } else {
+                // Ask Window: Fixed positioning, no transform centering.
+                el.style.left = `${visualLeft}px`;
+                el.style.top = `${visualTop}px`;
+            }
         }
     };
 })();

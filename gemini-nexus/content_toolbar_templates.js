@@ -13,12 +13,13 @@
             
             <!-- Quick Actions Toolbar (Dark Theme) -->
             <div class="toolbar" id="toolbar">
+                <button class="btn" id="btn-copy">${ICONS.COPY} Copy</button>
+                <div class="divider"></div>
                 <button class="btn" id="btn-ask">${ICONS.ASK} Ask</button>
                 <div class="divider"></div>
                 <button class="btn" id="btn-translate">${ICONS.TRANSLATE} Translate</button>
                 <div class="divider"></div>
                 <button class="btn" id="btn-explain">${ICONS.EXPLAIN} Explain</button>
-                <div class="arrow"></div>
             </div>
 
             <!-- Image Button -->
@@ -46,7 +47,6 @@
                         <div class="markdown-body" id="result-text"></div>
                         <div class="spinner-container hidden" id="loading-spinner">
                              <div class="spinner"></div>
-                             <span id="loading-text" class="loading-text"></span>
                         </div>
                     </div>
 
