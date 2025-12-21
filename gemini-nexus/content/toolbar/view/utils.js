@@ -1,5 +1,7 @@
 
 
+
+
 // content/toolbar/view/utils.js
 (function() {
     /**
@@ -89,13 +91,9 @@
             // --- Apply Coordinates ---
             
             if (!isLargerWindow) {
-                // Small Toolbar: CSS has transform: translateX(-50%)
-                // So style.left needs to be the CENTER of the visual element.
-                // Center = VisualLeft + Width/2
-                
-                const centerX = visualLeft + (width / 2);
-                
-                el.style.left = `${centerX + scrollX}px`;
+                // Small Toolbar: CSS has transform: translateY(10px) (no horizontal transform)
+                // So style.left is exact position.
+                el.style.left = `${visualLeft + scrollX}px`;
                 el.style.top = `${visualTop + scrollY}px`;
             } else {
                 // Ask Window: Fixed positioning, no transform centering.

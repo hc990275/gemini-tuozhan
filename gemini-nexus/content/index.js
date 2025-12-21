@@ -1,16 +1,26 @@
 
-
-// content.js v3.0.0 -> content/index.js
-console.log("%c Gemini Nexus v3.0.0 Ready ", "background: #333; color: #00ff00; font-size: 16px");
+// content.js v3.1.0 -> content/index.js
+console.log("%c Gemini Nexus v3.1.0 Ready ", "background: #333; color: #00ff00; font-size: 16px");
 
 // Initialize Helpers
-// (Classes are loaded into window scope by previous content scripts in manifest)
 const selectionOverlay = new window.GeminiNexusOverlay();
-const floatingToolbar = new window.GeminiFloatingToolbar(); // Initialize Toolbar
+const floatingToolbar = new window.GeminiToolbarController(); 
+
+// State to track who requested the capture
+let captureSource = null;
 
 // Listen for messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
+    // 来自右键菜单的指令
+    if (request.action === "CONTEXT_MENU_ACTION") {
+        if (floatingToolbar) {
+            floatingToolbar.handleContextAction(request.mode);
+        }
+        sendResponse({status: "ok"});
+        return true;
+    }
+
     // Focus Input
     if (request.action === "FOCUS_INPUT") {
         try {
@@ -31,8 +41,47 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // Start Selection Mode
     if (request.action === "START_SELECTION") {
-        selectionOverlay.start();
+        captureSource = request.source; // Track source (e.g. 'sidepanel')
+
+        // 关键：在截图前隐藏所有浮动 UI，防止 UI 被截进去
+        if (floatingToolbar) {
+            floatingToolbar.hideAll();
+            // Update the controller's mode if provided, so it knows what to do with the result (if local)
+            if (request.mode) {
+                floatingToolbar.currentMode = request.mode;
+            }
+        }
+        // Passing captured image from request to overlay
+        selectionOverlay.start(request.image);
         sendResponse({status: "selection_started"});
+        return true;
+    }
+
+    // 处理截图后的裁剪结果
+    if (request.action === "CROP_SCREENSHOT") {
+        if (captureSource === 'sidepanel') {
+            // Forward back to sidepanel via background
+            chrome.runtime.sendMessage({ 
+                action: "PROCESS_CROP_IN_SIDEPANEL", 
+                payload: request 
+            });
+            captureSource = null;
+        } else {
+            // Handle locally with floating toolbar
+            if (floatingToolbar) {
+                floatingToolbar.handleCropResult(request);
+            }
+        }
+        sendResponse({status: "ok"});
+        return true;
+    }
+
+    // Handle Generated Image Result
+    if (request.action === "GENERATED_IMAGE_RESULT") {
+        if (floatingToolbar) {
+            floatingToolbar.handleGeneratedImageResult(request);
+        }
+        sendResponse({status: "ok"});
         return true;
     }
 
@@ -45,12 +94,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Get Full Page Content (Cleaned Text)
     if (request.action === "GET_PAGE_CONTENT") {
         try {
-            // Optimization: Return innerText instead of HTML
-            // 1. Reduces token usage significantly
-            // 2. Reduces message passing overhead
-            // 3. Focuses on content rather than markup
             let text = document.body.innerText || "";
-            // Basic cleanup: merge multiple newlines
             text = text.replace(/\n{3,}/g, '\n\n');
             sendResponse({ content: text });
         } catch(e) {
@@ -66,21 +110,32 @@ let appShortcuts = {
     openPanel: "Ctrl+P"
 };
 
-// Load shortcuts from storage
-chrome.storage.local.get(['geminiShortcuts'], (result) => {
+// Initial Load of Settings
+chrome.storage.local.get(['geminiShortcuts', 'geminiTextSelectionEnabled'], (result) => {
     if (result.geminiShortcuts) {
         appShortcuts = { ...appShortcuts, ...result.geminiShortcuts };
     }
-});
-
-// Listen for updates
-chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.geminiShortcuts) {
-        appShortcuts = { ...appShortcuts, ...changes.geminiShortcuts.newValue };
+    // Default enabled if undefined
+    const selectionEnabled = result.geminiTextSelectionEnabled !== false;
+    if (floatingToolbar) {
+        floatingToolbar.setSelectionEnabled(selectionEnabled);
     }
 });
 
-// Helper to check key match
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+        if (changes.geminiShortcuts) {
+            appShortcuts = { ...appShortcuts, ...changes.geminiShortcuts.newValue };
+        }
+        if (changes.geminiTextSelectionEnabled) {
+             const enabled = changes.geminiTextSelectionEnabled.newValue !== false;
+             if (floatingToolbar) {
+                 floatingToolbar.setSelectionEnabled(enabled);
+             }
+        }
+    }
+});
+
 function matchShortcut(event, shortcutString) {
     if (!shortcutString) return false;
     
@@ -92,25 +147,18 @@ function matchShortcut(event, shortcutString) {
     const hasShift = parts.includes('shift');
     const hasMeta = parts.includes('meta') || parts.includes('command');
     
-    // Check modifiers
     if (event.ctrlKey !== hasCtrl) return false;
     if (event.altKey !== hasAlt) return false;
     if (event.shiftKey !== hasShift) return false;
     if (event.metaKey !== hasMeta) return false;
 
-    // Check main key (last part usually)
-    // Filter out modifiers from parts to find the actual key char
     const mainKeys = parts.filter(p => !['ctrl','alt','shift','meta','command'].includes(p));
     if (mainKeys.length !== 1) return false;
 
     return key === mainKeys[0];
 }
 
-// Global Shortcut Listeners
 document.addEventListener('keydown', (e) => {
-    // Ignore if typing in an input field (unless modifiers are pressed heavily?)
-    // But usually global shortcuts like Ctrl+P should work anywhere unless strictly prevented.
-    
     if (matchShortcut(e, appShortcuts.openPanel)) {
         e.preventDefault(); 
         e.stopPropagation();

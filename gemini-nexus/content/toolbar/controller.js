@@ -20,6 +20,9 @@
 
             this.inputManager = new window.GeminiInputManager();
             
+            // Initialize Dispatcher with reference to this controller
+            this.dispatcher = new window.GeminiToolbarDispatcher(this);
+
             // Selection Observer
             this.selectionObserver = new window.GeminiSelectionObserver({
                 onSelection: this.handleSelection.bind(this),
@@ -31,7 +34,10 @@
             this.visible = false;
             this.currentSelection = "";
             this.lastRect = null;
+            this.lastMousePoint = null;
             this.lastSessionId = null;
+            this.currentMode = 'ask'; // 默认模式
+            this.isSelectionEnabled = true;
 
             // Bind Action Handler
             this.handleAction = this.handleAction.bind(this);
@@ -65,6 +71,82 @@
             this.imageDetector.init();
             this.streamHandler.init();
         }
+        
+        setSelectionEnabled(enabled) {
+            this.isSelectionEnabled = enabled;
+            if (!enabled) {
+                this.handleSelectionClear();
+            }
+        }
+
+        /**
+         * 处理来自右键菜单的动作指令
+         */
+        handleContextAction(mode) {
+            this.currentMode = mode;
+
+            if (mode === 'ask') {
+                this.showGlobalInput(false);
+            } else if (mode === 'page_chat') {
+                this.showGlobalInput(true); // 带网页上下文打开
+            } else {
+                // 需要截图的操作模式：ocr, snip, screenshot_translate
+                chrome.runtime.sendMessage({ action: "INITIATE_CAPTURE" });
+            }
+        }
+
+        /**
+         * 处理截图完成后的结果
+         */
+        async handleCropResult(request) {
+            // 截图已经由 background 完成并发送到了这里
+            const isZh = navigator.language.startsWith('zh');
+            const rect = {
+                left: window.innerWidth / 2 - 200,
+                top: 100,
+                right: window.innerWidth / 2 + 200,
+                bottom: 200,
+                width: 400,
+                height: 100
+            };
+
+            const model = this.ui.getSelectedModel();
+
+            // Client-side Cropping
+            let finalImage = request.image;
+            if (window.GeminiImageCropper && request.area) {
+                try {
+                    finalImage = await window.GeminiImageCropper.crop(request.image, request.area);
+                } catch(e) {
+                    console.error("Crop failed in content script", e);
+                }
+            }
+
+            if (this.currentMode === 'ocr') {
+                this.actions.handleImagePrompt(finalImage, rect, 'ocr', model);
+            } else if (this.currentMode === 'screenshot_translate') {
+                this.actions.handleImagePrompt(finalImage, rect, 'translate', model);
+            } else if (this.currentMode === 'snip') {
+                this.actions.handleImagePrompt(finalImage, rect, 'snip', model);
+            }
+            
+            this.currentMode = 'ask'; // 重置模式
+            this.visible = true; // Ensure logic knows window is visible
+        }
+
+        handleGeneratedImageResult(request) {
+            if (request.base64 && window.GeminiWatermarkRemover) {
+                 window.GeminiWatermarkRemover.process(request.base64).then(cleaned => {
+                     // Pass cleaned image to UI
+                     this.ui.handleGeneratedImageResult({ ...request, base64: cleaned });
+                 }).catch(e => {
+                     // Fallback to original on error
+                     this.ui.handleGeneratedImageResult(request);
+                 });
+                 return;
+            }
+            this.ui.handleGeneratedImageResult(request);
+        }
 
         // --- Event Handlers (Delegated from SelectionObserver) ---
 
@@ -85,9 +167,12 @@
         }
 
         handleSelection(data) {
+            if (!this.isSelectionEnabled) return;
+            
             const { text, rect, mousePoint } = data;
             this.currentSelection = text;
             this.lastRect = rect;
+            this.lastMousePoint = mousePoint;
 
             // Capture source input element for potential grammar fix
             this.inputManager.capture();
@@ -116,108 +201,7 @@
         }
 
         handleAction(actionType, data) {
-            // Get currently selected model from UI
-            const currentModel = this.ui.getSelectedModel();
-
-            // --- Copy Selection ---
-            if (actionType === 'copy_selection') {
-                if (this.currentSelection) {
-                    navigator.clipboard.writeText(this.currentSelection)
-                        .then(() => this.ui.showCopySelectionFeedback(true))
-                        .catch((err) => {
-                            console.error("Failed to copy text:", err);
-                            this.ui.showCopySelectionFeedback(false);
-                        });
-                }
-                return;
-            }
-
-            // --- Image Analysis ---
-            if (actionType === 'image_analyze') {
-                const img = this.imageDetector.getCurrentImage();
-                if (!img) return;
-                
-                const imgUrl = img.src;
-                const rect = img.getBoundingClientRect();
-
-                this.ui.hideImageButton();
-                this.lastSessionId = null; // Reset session for new image
-                this.actions.handleImageAnalyze(imgUrl, rect, currentModel);
-                return;
-            }
-
-            // --- Manual Ask (UI Only) ---
-            if (actionType === 'ask') {
-                if (this.currentSelection) {
-                    this.ui.hide(); // Hide small toolbar
-                    const isZh = navigator.language.startsWith('zh');
-                    this.ui.showAskWindow(this.lastRect, this.currentSelection, isZh ? "询问" : "Ask Gemini");
-                }
-                return;
-            }
-
-            // --- Quick Actions (Translate / Explain / Summarize) ---
-            if (['translate', 'explain', 'summarize'].includes(actionType)) {
-                if (!this.currentSelection) return;
-                this.lastSessionId = null; // Reset session for new quick action
-                this.actions.handleQuickAction(actionType, this.currentSelection, this.lastRect, currentModel);
-                return;
-            }
-
-            // --- Grammar Fix (with source tracking) ---
-            if (actionType === 'grammar') {
-                if (!this.currentSelection) return;
-                this.ui.setGrammarMode(true, this.inputManager.source, this.inputManager.range);
-                this.lastSessionId = null; // Reset session for grammar
-                this.actions.handleQuickAction(actionType, this.currentSelection, this.lastRect, currentModel);
-                return;
-            }
-
-            // --- Insert Result ---
-            if (actionType === 'insert_result') {
-                this.handleInsert(data, false);
-                return;
-            }
-
-            // --- Replace Result ---
-            if (actionType === 'replace_result') {
-                this.handleInsert(data, true);
-                return;
-            }
-
-            // --- Submit Question ---
-            if (actionType === 'submit_ask') {
-                const question = data; // data is the input text
-                const context = this.currentSelection;
-                if (question) {
-                    this.actions.handleSubmitAsk(question, context, this.lastSessionId, currentModel);
-                }
-                return;
-            }
-            
-            // --- Retry ---
-            if (actionType === 'retry_ask') {
-                this.actions.handleRetry();
-                return;
-            }
-
-            // --- Cancel ---
-            if (actionType === 'cancel_ask') {
-                this.actions.handleCancel(); // Send cancel to bg
-                this.ui.hideAskWindow();
-                this.visible = false;
-                this.lastSessionId = null; // Reset session
-                return;
-            }
-
-            // --- Continue Chat ---
-            if (actionType === 'continue_chat') {
-                this.actions.handleContinueChat(this.lastSessionId);
-                this.ui.hideAskWindow();
-                this.visible = false;
-                this.lastSessionId = null; // Reset session
-                return;
-            }
+            this.dispatcher.dispatch(actionType, data);
         }
 
         // --- Helper Methods ---
@@ -235,54 +219,44 @@
             this.visible = false;
         }
 
-        showGlobalInput() {
+        hideAll() {
+            this.ui.hideAll();
+            this.visible = false;
+        }
+
+        showGlobalInput(withPageContext = false) {
             const viewportW = window.innerWidth;
             const viewportH = window.innerHeight;
             const width = 400;
             const height = 100;
 
-            // Create a virtual rect roughly in the center-top area
             const left = (viewportW - width) / 2;
             const top = (viewportH / 2) - 200;
 
             const rect = {
-                left: left,
-                top: top,
-                right: left + width,
-                bottom: top + height,
-                width: width,
-                height: height
+                left: left, top: top, right: left + width, bottom: top + height,
+                width: width, height: height
             };
 
-            this.ui.hide(); // Hide small selection toolbar
-
-            // Show window with no context
+            this.ui.hide(); 
             const isZh = navigator.language.startsWith('zh');
-            this.ui.showAskWindow(rect, null, isZh ? "询问" : "Ask Gemini");
-
-            // Reset state for new question
-            this.ui.setInputValue("");
-            this.currentSelection = ""; // Ensure context is clear for submission
-            this.lastSessionId = null; // Reset session for fresh start
-        }
-
-        handleInsert(text, replace) {
-            if (!this.inputManager.hasSource()) {
-                // Fallback: copy to clipboard instead
-                navigator.clipboard.writeText(text).then(() => {
-                    this.ui.showError("Text copied to clipboard (not in editable field)");
-                }).catch(() => {
-                    this.ui.showError("Cannot insert: not in editable field");
-                });
-                return;
+            
+            // 如果带网页上下文，修改标题
+            let title = isZh ? "询问" : "Ask Gemini";
+            if (withPageContext) {
+                title = isZh ? "与当前网页对话" : "Chat with Page";
             }
 
-            const success = this.inputManager.insert(text, replace);
-            if (success) {
-                // Hide Insert/Replace buttons after successful operation
-                this.ui.showInsertReplaceButtons(false);
-            } else {
-                this.ui.showError("Failed to insert text");
+            this.ui.showAskWindow(rect, null, title);
+
+            this.ui.setInputValue("");
+            this.currentSelection = ""; 
+            this.lastSessionId = null; 
+            this.visible = true;
+
+            // 如果指定了网页上下文模式，在后续发送时包含上下文
+            if (withPageContext) {
+                this.currentSelection = "__PAGE_CONTEXT_FORCE__";
             }
         }
     }

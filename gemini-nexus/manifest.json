@@ -2,7 +2,7 @@
 {
   "manifest_version": 3,
   "name": "Gemini Nexus",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "permissions": ["sidePanel", "storage", "contextMenus", "scripting", "alarms"],
   "host_permissions": [
     "https://gemini.google.com/*",
@@ -45,29 +45,35 @@
         "content/toolbar/icons.js",
         "content/toolbar/styles/core.js",
         "content/toolbar/styles/widget.js",
-        "content/toolbar/styles/panel.js",
+        "content/toolbar/styles/panel/layout.js",
+        "content/toolbar/styles/panel/header.js",
+        "content/toolbar/styles/panel/body.js",
+        "content/toolbar/styles/panel/footer.js",
+        "content/toolbar/styles/panel/index.js",
         "content/toolbar/styles/markdown.js",
         "content/toolbar/styles/index.js",
-        "content/toolbar/markdown/utils.js",
-        "content/toolbar/markdown/math.js",
-        "content/toolbar/markdown/highlight.js",
-        "content/toolbar/markdown/parser.js",
-        "content/toolbar/markdown/renderer.js",
+        "content/toolbar/markdown/bridge.js",
         "content/toolbar/drag.js",
         "content/toolbar/templates.js",
         "content/toolbar/view/utils.js",
         "content/toolbar/view/widget.js",
         "content/toolbar/view/window.js",
+        "content/toolbar/view/dom.js",
         "content/toolbar/view/index.js",
         "content/toolbar/events.js",
-        "content/toolbar/ui.js", 
+        "content/toolbar/ui/grammar.js",
+        "content/toolbar/ui/renderer.js",
+        "content/toolbar/ui/actions_delegate.js",
+        "content/toolbar/ui/manager.js", 
         "content/toolbar/actions.js",
         "content/toolbar/image.js",
         "content/toolbar/stream.js", 
         "content/toolbar/input.js",
         "content/toolbar/selection.js",
+        "content/toolbar/dispatch.js",
+        "content/toolbar/crop.js",
+        "content/toolbar/watermark.js",
         "content/toolbar/controller.js",
-        "content/toolbar/index.js", 
         "content/index.js"
       ],
       "run_at": "document_end"
@@ -81,6 +87,6 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'",
-    "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
+    "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src https: http: data: blob:; media-src https: http: data: blob:;"
   }
 }

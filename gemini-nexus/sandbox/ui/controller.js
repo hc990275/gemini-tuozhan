@@ -26,6 +26,20 @@ export class UIController {
         this.historyDiv = this.chat.historyDiv;
         this.sendBtn = this.chat.sendBtn;
         this.modelSelect = elements.modelSelect;
+
+        // Initialize Layout Detection
+        this.checkLayout();
+        window.addEventListener('resize', () => this.checkLayout());
+    }
+
+    checkLayout() {
+        // Threshold for Wide Mode (e.g. Full Page Tab or large side panel)
+        const isWide = window.innerWidth > 800;
+        if (isWide) {
+            document.body.classList.add('layout-wide');
+        } else {
+            document.body.classList.remove('layout-wide');
+        }
     }
 
     // --- Delegation Methods ---

@@ -1,27 +1,18 @@
 
 // sandbox/render/content.js
-import { MathHandler } from './math_utils.js';
+import { transformMarkdown } from './pipeline.js';
 
 // Helper: Render Markdown/Math/Text into an element
 export function renderContent(contentDiv, text, role) {
     // Render Markdown and Math for AI responses
-    // Check if marked is loaded (it might be lazy loading)
-    if (role === 'ai' && typeof marked !== 'undefined') {
+    if (role === 'ai') {
         
-        const mathHandler = new MathHandler();
-        
-        // --- Math Protection ---
-        let processedText = mathHandler.protect(text);
-
-        // --- Markdown Parsing ---
-        let html = marked.parse(processedText);
-        
-        // --- Restore Math ---
-        html = mathHandler.restore(html);
-
+        // Use shared pipeline
+        const html = transformMarkdown(text);
         contentDiv.innerHTML = html;
         
-        // Render Math (KaTeX)
+        // Render Math (KaTeX Auto-render extension)
+        // This processes the specific DOM element after HTML insertion
         if (typeof renderMathInElement !== 'undefined') {
             renderMathInElement(contentDiv, {
                 delimiters: [

@@ -1,6 +1,7 @@
 
 // ui_chat.js -> sandbox/ui/chat.js
 import { t } from '../core/i18n.js';
+import { copyToClipboard } from '../render/clipboard.js';
 
 export class ChatController {
     constructor(elements) {
@@ -19,6 +20,32 @@ export class ChatController {
             this.inputFn.addEventListener('input', () => {
                 this.inputFn.style.height = 'auto';
                 this.inputFn.style.height = this.inputFn.scrollHeight + 'px';
+            });
+        }
+
+        // Code Block Copy Delegation
+        if (this.historyDiv) {
+            this.historyDiv.addEventListener('click', async (e) => {
+                const btn = e.target.closest('.copy-code-btn');
+                if (!btn) return;
+                
+                const wrapper = btn.closest('.code-block-wrapper');
+                const codeEl = wrapper.querySelector('code');
+                if (!codeEl) return;
+                
+                try {
+                    await copyToClipboard(codeEl.textContent);
+                    
+                    // Visual Feedback
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span>Copied</span>`;
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy code', err);
+                }
             });
         }
     }

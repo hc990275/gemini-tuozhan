@@ -1,3 +1,4 @@
+
 // messaging.js
 
 export function sendToBackground(payload) {
@@ -40,5 +41,16 @@ export function saveLanguageToStorage(lang) {
     window.parent.postMessage({
         action: 'SAVE_LANGUAGE',
         payload: lang
+    }, '*');
+}
+
+export function requestTextSelectionFromStorage() {
+    window.parent.postMessage({ action: 'GET_TEXT_SELECTION' }, '*');
+}
+
+export function saveTextSelectionToStorage(enabled) {
+    window.parent.postMessage({
+        action: 'SAVE_TEXT_SELECTION',
+        payload: enabled
     }, '*');
 }

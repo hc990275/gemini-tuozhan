@@ -1,5 +1,4 @@
 
-
 // background/session.js
 import { sendGeminiMessage } from '../services/gemini_api.js';
 
@@ -39,33 +38,86 @@ export class GeminiSessionManager {
             await this.ensureInitialized();
 
             // Reset context if model changed
-            if (this.lastModel && this.lastModel !== request.model) {
+            // Store target model in local var as we might switch it during fallback
+            let targetModel = request.model;
+            
+            if (this.lastModel && this.lastModel !== targetModel) {
                 this.currentContext = null;
             }
-            this.lastModel = request.model;
+            // Note: We don't update this.lastModel yet; we wait for success.
 
-            // Construct image object
-            let imageObj = null;
-            if (request.image) {
-                imageObj = {
+            // Construct files array
+            let files = [];
+            // New multi-file support
+            if (request.files && Array.isArray(request.files)) {
+                files = request.files;
+            } 
+            // Backward compatibility for single image
+            else if (request.image) {
+                files = [{
                     base64: request.image, 
                     type: request.imageType,
-                    name: request.imageName
-                };
+                    name: request.imageName || "image.png"
+                }];
             }
 
-            // Send request
-            const response = await sendGeminiMessage(
-                request.text, 
-                this.currentContext, 
-                request.model, 
-                imageObj, 
-                signal,
-                onUpdate // Pass stream callback
-            );
+            // Send request with Fallback Logic
+            let response;
+            try {
+                response = await sendGeminiMessage(
+                    request.text, 
+                    this.currentContext, 
+                    targetModel, 
+                    files, 
+                    signal,
+                    onUpdate // Pass stream callback
+                );
+            } catch (err) {
+                // FALLBACK: If Thinking model (2.5-pro) fails with images (often "No valid response"), retry with Flash.
+                // This handles cases where the experimental model doesn't support the image input format or tool.
+                const isThinking = targetModel === 'gemini-2.5-pro';
+                const hasFiles = files.length > 0;
+                const isProtocolError = err.message && (err.message.includes("No valid response") || err.message.includes("400"));
+
+                if (isThinking && hasFiles && isProtocolError) {
+                    console.warn("[Gemini Nexus] Thinking model failed with image. Fallback to Flash.");
+                    
+                    // Prepare clean context for fallback (reuse auth, clear IDs)
+                    let fallbackContext = null;
+                    if (this.currentContext) {
+                        fallbackContext = {
+                            atValue: this.currentContext.atValue,
+                            blValue: this.currentContext.blValue,
+                            authUser: this.currentContext.authUser,
+                            contextIds: ['', '', ''] 
+                        };
+                    }
+
+                    targetModel = 'gemini-2.5-flash';
+                    
+                    response = await sendGeminiMessage(
+                        request.text,
+                        fallbackContext,
+                        targetModel,
+                        files,
+                        signal,
+                        onUpdate
+                    );
+
+                    // Append notification to the response text
+                    const isZh = chrome.i18n.getUILanguage().startsWith('zh');
+                    const note = isZh 
+                        ? "\n\n*(注: 思考模型暂不支持此类图片输入，已自动切换为快速模型)*" 
+                        : "\n\n*(Note: Thinking model does not support this image input. Switched to Fast model)*";
+                    response.text += note;
+                } else {
+                    throw err; // Re-throw if not eligible for fallback
+                }
+            }
             
             // Update Context
             this.currentContext = response.newContext;
+            this.lastModel = targetModel;
             
             // Persist
             await chrome.storage.local.set({ 
@@ -76,6 +128,8 @@ export class GeminiSessionManager {
             return {
                 action: "GEMINI_REPLY",
                 text: response.text,
+                thoughts: response.thoughts,
+                images: response.images, // Pass generated images
                 status: "success",
                 context: this.currentContext 
             };

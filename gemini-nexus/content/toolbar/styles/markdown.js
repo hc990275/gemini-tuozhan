@@ -1,7 +1,7 @@
 
-// content/toolbar/styles/markdown.js
 (function() {
-    window.GeminiStylesMarkdown = `
+    window.GeminiStyles = window.GeminiStyles || {};
+    window.GeminiStyles.Markdown = `
         /* Result Area */
         .result-area {
             flex: 1;
@@ -32,29 +32,57 @@
         .markdown-body li { margin-bottom: 4px; }
 
         /* Code Blocks */
-        .markdown-body pre {
+        .code-block-wrapper {
             background: #f4f6f8;
-            padding: 24px 12px 12px 12px;
             border-radius: 8px;
-            overflow-x: auto;
-            margin: 12px 0;
             border: 1px solid #e1e3e1;
-            position: relative; 
+            margin: 12px 0;
+            overflow: hidden;
         }
-        .code-lang {
-            position: absolute;
-            top: 0;
-            right: 0;
-            padding: 2px 8px;
-            font-size: 10px;
-            color: #666;
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
             background: #e1e3e1;
-            border-bottom-left-radius: 6px;
-            border-top-right-radius: 6px;
-            text-transform: uppercase;
+            border-bottom: 1px solid #d0d0d0;
             font-family: sans-serif;
+        }
+
+        .code-lang {
+            font-size: 11px;
+            color: #444;
+            text-transform: uppercase;
             font-weight: 600;
         }
+
+        .copy-code-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        .copy-code-btn:hover {
+            background: rgba(0,0,0,0.05);
+            color: #000;
+        }
+
+        .markdown-body pre {
+            background: transparent;
+            padding: 12px;
+            border-radius: 0;
+            overflow-x: auto;
+            margin: 0;
+            border: none;
+        }
+
         .markdown-body code {
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 0.9em;
@@ -72,13 +100,16 @@
         }
 
         /* Syntax Highlighting */
-        .token-comment { color: #6a737d; font-style: italic; }
-        .token-tag { color: #22863a; }
-        .token-attr { color: #6f42c1; }
-        .token-string { color: #032f62; }
-        .token-keyword { color: #d73a49; }
-        .token-number { color: #005cc5; }
-        .token-doctag { color: #d73a49; font-weight: bold; }
+        .hljs-comment, .hljs-quote { color: #6a737d; font-style: italic; }
+        .hljs-doctag, .hljs-keyword, .hljs-formula { color: #d73a49; }
+        .hljs-section, .hljs-name, .hljs-selector-tag, .hljs-deletion, .hljs-subst { color: #22863a; }
+        .hljs-literal { color: #005cc5; }
+        .hljs-string, .hljs-regexp, .hljs-addition, .hljs-attribute, .hljs-meta-string { color: #032f62; }
+        .hljs-built_in, .hljs-class .hljs-title { color: #6f42c1; }
+        .hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-type, .hljs-selector-class, .hljs-selector-attr, .hljs-selector-pseudo, .hljs-number { color: #005cc5; }
+        .hljs-symbol, .hljs-bullet, .hljs-link, .hljs-meta, .hljs-selector-id, .hljs-title { color: #6f42c1; }
+        .hljs-emphasis { font-style: italic; }
+        .hljs-strong { font-weight: bold; }
 
         /* Tables */
         .markdown-body table {
@@ -109,12 +140,36 @@
             text-decoration: underline;
         }
 
-        /* Images */
+        /* Images (Standard MD images) */
         .markdown-body img {
             max-width: 100%;
             border-radius: 8px;
             margin: 8px 0;
             border: 1px solid #e0e0e0;
+        }
+
+        /* Generated Images (Grid Layout) */
+        .generated-images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            width: 100%;
+        }
+
+        .generated-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            object-fit: contain; /* Full image visible */
+            background: #f0f4f9;
+        }
+        
+        .generated-image.loading {
+            opacity: 0.7;
+            min-height: 150px;
         }
 
         /* Quotes & Misc */

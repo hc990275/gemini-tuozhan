@@ -37,11 +37,95 @@ export function parseGeminiLine(line) {
                  const firstCandidate = candidates[0];
                  if (!Array.isArray(firstCandidate) || firstCandidate.length < 2) return null;
 
+                 // 1. Extract Text
+                 let text = "";
                  const textNode = firstCandidate[1];
-                 if (!Array.isArray(textNode) || typeof textNode[0] !== 'string') return null;
+                 if (Array.isArray(textNode) && typeof textNode[0] === 'string') {
+                     text = textNode[0];
+                 }
+
+                 // 2. Extract Thoughts (Thinking Process) - Index 37
+                 // Based on python gemini-webapi reference: candidate[37][0][0]
+                 let thoughts = null;
+                 if (firstCandidate[37] && Array.isArray(firstCandidate[37]) && firstCandidate[37][0]) {
+                     const thoughtNode = firstCandidate[37][0];
+                     if (Array.isArray(thoughtNode) && typeof thoughtNode[0] === 'string') {
+                         thoughts = thoughtNode[0];
+                     }
+                 }
+
+                 // 3. Extract Generated Images (Deep Search Strategy)
+                 // Instead of relying on specific indices (which shift between models like Flash vs Thinking),
+                 // we recursively scan the candidate structure for any string that looks like a hosted image URL.
+                 const generatedImages = [];
+                 const seenUrls = new Set();
+
+                 const traverse = (obj, depth = 0) => {
+                     // Safety break for deep recursion
+                     if (!obj || depth > 20) return;
+
+                     if (typeof obj === 'string') {
+                         // Check for Google hosted content URLs (lh3.googleusercontent.com, etc.)
+                         if ((obj.startsWith('http') || obj.startsWith('//')) && 
+                             (obj.includes('googleusercontent.com') || obj.includes('ggpht.com'))) {
+                             
+                             // CRITICAL: Exclude the placeholder URL which looks like .../image_generation_content/0
+                             if (obj.includes('image_generation_content')) return;
+
+                             // Normalize protocol
+                             let url = obj;
+                             if (url.startsWith('//')) {
+                                 url = 'https:' + url;
+                             } else if (url.startsWith('http://')) {
+                                 url = url.replace('http://', 'https://');
+                             }
+                             
+                             // Add unique images
+                             if (!seenUrls.has(url)) {
+                                 seenUrls.add(url);
+                                 generatedImages.push({
+                                     url: url,
+                                     alt: "Generated Image"
+                                 });
+                             }
+                         }
+                         return;
+                     }
+
+                     if (Array.isArray(obj)) {
+                         for (const item of obj) {
+                             traverse(item, depth + 1);
+                         }
+                         return;
+                     }
+
+                     if (typeof obj === 'object') {
+                         for (const key in obj) {
+                             traverse(obj[key], depth + 1);
+                         }
+                         return;
+                     }
+                 };
+
+                 // Start traversal on all properties of the candidate except the text node (index 1)
+                 // This prevents us from re-parsing URLs quoted in the text itself.
+                 firstCandidate.forEach((part, idx) => {
+                     if (idx !== 1) traverse(part);
+                 });
+
+                 // CLEANUP: If we successfully found real images, remove the ugly placeholder text.
+                 // Placeholder format: http://googleusercontent.com/image_generation_content/0
+                 if (generatedImages.length > 0) {
+                     text = text.replace(/https?:\/\/googleusercontent\.com\/image_generation_content\/\d+/g, '');
+                     // Remove potential empty markdown links created by this removal
+                     text = text.replace(/\[\s*\]\(\s*\)/g, '');
+                     text = text.trim();
+                 }
 
                  return {
-                     text: textNode[0],
+                     text: text,
+                     thoughts: thoughts,
+                     images: generatedImages,
                      conversationId: payload[1]?.[0],
                      responseId: payload[1]?.[1],
                      choiceId: firstCandidate[0]
@@ -58,6 +142,8 @@ export function parseGeminiLine(line) {
             if (result) {
                 return {
                     text: result.text,
+                    thoughts: result.thoughts,
+                    images: result.images,
                     ids: [result.conversationId, result.responseId, result.choiceId]
                 };
             }

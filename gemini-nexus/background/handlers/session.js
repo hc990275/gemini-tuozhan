@@ -1,6 +1,6 @@
 
-// background/msg_session.js
-import { saveToHistory } from './history.js';
+// background/handlers/session.js
+import { saveToHistory, appendAiMessage } from '../history.js';
 
 export class SessionMessageHandler {
     constructor(sessionManager, imageHandler) {
@@ -12,11 +12,12 @@ export class SessionMessageHandler {
         // --- PROMPT EXECUTION ---
         if (request.action === "SEND_PROMPT") {
             (async () => {
-                const onUpdate = (partialText) => {
+                const onUpdate = (partialText, partialThoughts) => {
                     // Catch errors if receiver (UI) is closed/unavailable
                     chrome.runtime.sendMessage({
                         action: "GEMINI_STREAM_UPDATE",
-                        text: partialText
+                        text: partialText,
+                        thoughts: partialThoughts
                     }).catch(() => {}); 
                 };
 
@@ -31,7 +32,12 @@ export class SessionMessageHandler {
 
                     const result = await this.sessionManager.handleSendPrompt(request, onUpdate);
                     if (result) {
-                        chrome.runtime.sendMessage(result);
+                        // Robustness: Save to history in background to ensure persistence even if UI is closed
+                        if (request.sessionId) {
+                            await appendAiMessage(request.sessionId, result);
+                        }
+
+                        chrome.runtime.sendMessage(result).catch(() => {});
                     }
                 } catch (e) {
                     console.error("Prompt error:", e);
@@ -137,11 +143,12 @@ export class SessionMessageHandler {
             await this.sessionManager.ensureInitialized();
         }
 
-        const onUpdate = (partialText) => {
+        const onUpdate = (partialText, partialThoughts) => {
             if (tabId) {
                 chrome.tabs.sendMessage(tabId, {
                     action: "GEMINI_STREAM_UPDATE",
-                    text: partialText
+                    text: partialText,
+                    thoughts: partialThoughts
                 }).catch(() => {});
             }
         };
@@ -158,7 +165,7 @@ export class SessionMessageHandler {
                 action: "GEMINI_STREAM_DONE",
                 result: result,
                 sessionId: savedSession ? savedSession.id : null
-            });
+            }).catch(() => {});
         }
     }
 
@@ -173,28 +180,31 @@ export class SessionMessageHandler {
                 chrome.tabs.sendMessage(tabId, {
                     action: "GEMINI_STREAM_DONE",
                     result: { status: "error", text: "Failed to load image: " + imgRes.error }
-                });
+                }).catch(() => {});
             }
             return;
         }
 
-        // 2. Construct Prompt
+        // 2. Construct Prompt (Pass as files array for session manager)
         const promptRequest = {
             text: request.text,
             model: request.model,
-            image: imgRes.base64,
-            imageType: imgRes.type,
-            imageName: imgRes.name
+            files: [{
+                base64: imgRes.base64,
+                type: imgRes.type,
+                name: imgRes.name
+            }]
         };
 
         await this.sessionManager.resetContext();
 
         // 3. Execute
-        const onUpdate = (partialText) => {
+        const onUpdate = (partialText, partialThoughts) => {
             if (tabId) {
                 chrome.tabs.sendMessage(tabId, {
                     action: "GEMINI_STREAM_UPDATE",
-                    text: partialText
+                    text: partialText,
+                    thoughts: partialThoughts
                 }).catch(() => {});
             }
         };
@@ -203,7 +213,8 @@ export class SessionMessageHandler {
         
         let savedSession = null;
         if (result && result.status === 'success') {
-            savedSession = await saveToHistory(request.text, result, { base64: imgRes.base64 });
+            // Save to history with the array format
+            savedSession = await saveToHistory(request.text, result, [{ base64: imgRes.base64 }]);
         }
 
         if (tabId) {
@@ -211,7 +222,7 @@ export class SessionMessageHandler {
                 action: "GEMINI_STREAM_DONE",
                 result: result,
                 sessionId: savedSession ? savedSession.id : null
-            });
+            }).catch(() => {});
         }
     }
 }

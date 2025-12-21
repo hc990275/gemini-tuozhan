@@ -26,9 +26,49 @@
             this._add(imageBtn, 'mouseover', () => this.controller.handleImageHover(true));
             this._add(imageBtn, 'mouseout', () => this.controller.handleImageHover(false));
 
+            // --- Image Menu Actions ---
+            if (buttons.imageChat) {
+                this._add(buttons.imageChat, 'click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    this.controller.triggerAction(e, 'image_chat');
+                });
+            }
+            if (buttons.imageDescribe) {
+                this._add(buttons.imageDescribe, 'click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    this.controller.triggerAction(e, 'image_describe');
+                });
+            }
+            if (buttons.imageExtract) {
+                this._add(buttons.imageExtract, 'click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    this.controller.triggerAction(e, 'image_extract');
+                });
+            }
+            
+            // --- Image Edit Actions ---
+            if (buttons.imageRemoveBg) {
+                this._add(buttons.imageRemoveBg, 'click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    this.controller.triggerAction(e, 'image_remove_bg');
+                });
+            }
+            if (buttons.imageRemoveText) {
+                this._add(buttons.imageRemoveText, 'click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    this.controller.triggerAction(e, 'image_remove_text');
+                });
+            }
+            if (buttons.imageUpscale) {
+                this._add(buttons.imageUpscale, 'click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    this.controller.triggerAction(e, 'image_upscale');
+                });
+            }
+
             // --- Window Actions ---
             this._add(buttons.headerClose, 'click', (e) => this.controller.cancelAsk(e));
-            this._add(buttons.stop, 'click', (e) => this.controller.cancelAsk(e));
+            this._add(buttons.stop, 'click', (e) => this.controller.stopAsk(e));
 
             if (buttons.continue) {
                 this._add(buttons.continue, 'click', (e) => this.controller.continueChat(e));
@@ -65,6 +105,11 @@
             // Prevent event bubbling to page
             if (elements.askWindow) {
                 this._add(elements.askWindow, 'mousedown', (e) => e.stopPropagation());
+            }
+            
+            // Code Copy Delegation inside Result Area
+            if (elements.resultText) {
+                this._add(elements.resultText, 'click', (e) => this.controller.handleCodeCopy(e));
             }
 
             this._initResizeObserver(askWindow);

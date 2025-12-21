@@ -159,11 +159,13 @@ export class ViewerController {
         const src = this.fullImage.src;
         if (!src) return;
 
-        const a = document.createElement('a');
-        a.href = src;
-        a.download = `gemini-image-${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Delegate to parent (Sidepanel) to bypass Sandbox restrictions
+        window.parent.postMessage({
+            action: 'DOWNLOAD_IMAGE',
+            payload: {
+                url: src,
+                filename: `gemini-image-${Date.now()}.png`
+            }
+        }, '*');
     }
 }

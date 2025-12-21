@@ -1,6 +1,4 @@
 
-
-
 // content/toolbar/view/index.js
 (function() {
     /**
@@ -28,6 +26,7 @@
             const get = (id) => this.shadow.getElementById(id);
             this.elements = {
                 toolbar: get('toolbar'),
+                toolbarDrag: get('toolbar-drag'),
                 imageBtn: get('image-btn'),
                 
                 // New Window Elements
@@ -59,7 +58,17 @@
                     copy: get('btn-copy-result'),
                     retry: get('btn-retry'),
                     insert: get('btn-insert'),
-                    replace: get('btn-replace')
+                    replace: get('btn-replace'),
+                    
+                    // Image Menu Buttons
+                    imageChat: get('btn-image-chat'),
+                    imageDescribe: get('btn-image-describe'),
+                    imageExtract: get('btn-image-extract'),
+                    
+                    // Image Edit Buttons
+                    imageRemoveBg: get('btn-image-remove-bg'),
+                    imageRemoveText: get('btn-image-remove-text'),
+                    imageUpscale: get('btn-image-upscale')
                 }
             };
         }
@@ -79,7 +88,7 @@
         get isDocked() { return this.windowView.isDocked; }
         
         togglePin() { return this.windowView.togglePin(); }
-        showAskWindow(rect, contextText, title, resetDrag) { return this.windowView.show(rect, contextText, title, resetDrag); }
+        showAskWindow(rect, contextText, title, resetDrag, mousePoint) { return this.windowView.show(rect, contextText, title, resetDrag, mousePoint); }
         hideAskWindow() { this.windowView.hide(); }
         showLoading(msg) { this.windowView.showLoading(msg); }
         
@@ -88,6 +97,8 @@
             this.windowView.showResult(text, title, isStreaming, isHtml); 
         }
         
+        updateStreamingState(isStreaming) { this.windowView.updateStreamingState(isStreaming); }
+
         showError(text) { this.windowView.showError(text); }
         toggleCopyIcon(success) { this.windowView.toggleCopyIcon(success); }
         setInputValue(text) { this.windowView.setInputValue(text); }

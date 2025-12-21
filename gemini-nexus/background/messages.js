@@ -1,6 +1,7 @@
+
 // background/messages.js
-import { SessionMessageHandler } from './msg_session.js';
-import { UIMessageHandler } from './msg_ui.js';
+import { SessionMessageHandler } from './handlers/session.js';
+import { UIMessageHandler } from './handlers/ui.js';
 
 /**
  * Sets up the global runtime message listener.

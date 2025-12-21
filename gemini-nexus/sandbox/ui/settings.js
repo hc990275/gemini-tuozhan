@@ -1,5 +1,6 @@
+
 // sandbox/ui/settings.js
-import { saveShortcutsToStorage, saveThemeToStorage, requestThemeFromStorage, saveLanguageToStorage, requestLanguageFromStorage } from '../../lib/messaging.js';
+import { saveShortcutsToStorage, saveThemeToStorage, requestThemeFromStorage, saveLanguageToStorage, requestLanguageFromStorage, saveTextSelectionToStorage, requestTextSelectionFromStorage } from '../../lib/messaging.js';
 import { setLanguagePreference, getLanguagePreference } from '../core/i18n.js';
 
 export class SettingsController {
@@ -11,14 +12,10 @@ export class SettingsController {
             openPanel: "Ctrl+P"
         };
         this.defaultShortcuts = { ...this.shortcuts };
+        this.textSelectionEnabled = true;
 
         this.queryElements();
         this.initListeners();
-        
-        // Initial Fetch
-        // Shortcuts are restored via UI_READY handshake, manual fetch is not handled by bridge
-        requestThemeFromStorage();
-        requestLanguageFromStorage();
     }
 
     queryElements() {
@@ -31,6 +28,7 @@ export class SettingsController {
         this.inputOpenPanel = document.getElementById('shortcut-open-panel');
         this.btnSave = document.getElementById('save-shortcuts');
         this.btnReset = document.getElementById('reset-shortcuts');
+        this.textSelectionToggle = document.getElementById('text-selection-toggle');
     }
 
     initListeners() {
@@ -78,6 +76,14 @@ export class SettingsController {
                 document.dispatchEvent(new CustomEvent('gemini-language-changed'));
             });
         }
+        
+        // Text Selection Toggle
+        if (this.textSelectionToggle) {
+            this.textSelectionToggle.addEventListener('change', (e) => {
+                this.textSelectionEnabled = e.target.checked;
+                saveTextSelectionToStorage(this.textSelectionEnabled);
+            });
+        }
 
         // Shortcuts
         this.setupShortcutInput(this.inputQuickAsk);
@@ -115,6 +121,9 @@ export class SettingsController {
             if(this.inputQuickAsk) this.inputQuickAsk.value = this.shortcuts.quickAsk;
             if(this.inputOpenPanel) this.inputOpenPanel.value = this.shortcuts.openPanel;
             if(this.languageSelect) this.languageSelect.value = getLanguagePreference();
+            
+            // Fetch current settings
+            requestTextSelectionFromStorage();
         }
     }
 
@@ -154,6 +163,13 @@ export class SettingsController {
             this.shortcuts = { ...this.defaultShortcuts, ...payload };
             if(this.inputQuickAsk) this.inputQuickAsk.value = this.shortcuts.quickAsk;
             if(this.inputOpenPanel) this.inputOpenPanel.value = this.shortcuts.openPanel;
+        }
+    }
+    
+    updateTextSelection(enabled) {
+        this.textSelectionEnabled = enabled;
+        if (this.textSelectionToggle) {
+            this.textSelectionToggle.checked = enabled;
         }
     }
 

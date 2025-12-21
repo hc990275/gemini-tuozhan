@@ -1,11 +1,25 @@
 
 // services/gemini_api.js
 import { fetchRequestParams } from './auth.js';
-import { uploadImage } from './upload.js';
+import { uploadFile } from './upload.js';
 import { parseGeminiLine } from './parser.js';
-import { MODEL_CONFIGS } from './config.js';
 
-export async function sendGeminiMessage(prompt, context, model, imageObj, signal, onUpdate) {
+const MODEL_CONFIGS = {
+    // Fast: Gemini 3 Flash
+    'gemini-2.5-flash': {
+        header: '[1,null,null,null,"9ec249fc9ad08861",null,null,0,[4]]'
+    },
+    // Thinking: Gemini 3 Flash Thinking
+    'gemini-2.5-pro': {
+        header: '[1,null,null,null,"4af6c7f5da75d65d",null,null,0,[4]]'
+    },
+    // 3 Pro: Gemini 3 Pro
+    'gemini-3.0-pro': {
+        header: '[1,null,null,null,"9d8ca3786ebdfbea",null,null,0,[4]]'
+    }
+};
+
+export async function sendGeminiMessage(prompt, context, model, files, signal, onUpdate) {
     // 1. Ensure Auth
     if (!context || !context.atValue) {
         const params = await fetchRequestParams();
@@ -19,33 +33,35 @@ export async function sendGeminiMessage(prompt, context, model, imageObj, signal
 
     const modelConfig = MODEL_CONFIGS[model] || MODEL_CONFIGS['gemini-2.5-flash'];
 
-    // 2. Handle Image Upload
-    let imageList = [];
-    if (imageObj) {
+    // 2. Handle File Uploads (Multimodal)
+    // Structure: [[[url], filename], [[url], filename], ...]
+    let fileList = [];
+    if (files && files.length > 0) {
         try {
-            const imageUrl = await uploadImage(imageObj, signal);
-            // Internal format aligned with Python client: [[[url], filename]]
-            // Removed legacy '1' flag
-            imageList = [[[imageUrl], imageObj.name]];
+            // Upload in parallel
+            const uploadPromises = files.map(file => uploadFile(file, signal)
+                .then(url => [[url], file.name])
+            );
+            fileList = await Promise.all(uploadPromises);
         } catch (e) {
             if (e.name === 'AbortError') throw e;
-            console.error("Image upload failed:", e);
+            console.error("File upload failed:", e);
             throw e;
         }
     }
 
     // 3. Construct Payload (Inlined)
     // Structure aligned with Python Gemini-API (v3.0):
-    // If images: [prompt, 0, null, imageList]
-    // If no images: [prompt]
+    // If files: [prompt, 0, null, fileList]
+    // If no files: [prompt]
     
     let messageStruct;
-    if (imageList.length > 0) {
+    if (fileList.length > 0) {
         messageStruct = [
             prompt,
             0,
             null,
-            imageList
+            fileList
         ];
     } else {
         messageStruct = [prompt];
@@ -128,7 +144,7 @@ export async function sendGeminiMessage(prompt, context, model, imageObj, signal
                 if (parsed) {
                     finalResult = parsed;
                     if (onUpdate) {
-                        onUpdate(parsed.text);
+                        onUpdate(parsed.text, parsed.thoughts);
                     }
                 }
             }
@@ -156,6 +172,8 @@ export async function sendGeminiMessage(prompt, context, model, imageObj, signal
 
     return {
         text: finalResult.text,
+        thoughts: finalResult.thoughts,
+        images: finalResult.images || [],
         newContext: context
     };
 }

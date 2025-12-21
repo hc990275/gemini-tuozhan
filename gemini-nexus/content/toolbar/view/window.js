@@ -1,10 +1,7 @@
 
-
-
 // content/toolbar/view/window.js
 (function() {
     const Utils = window.GeminiViewUtils;
-    const MarkdownRenderer = window.GeminiMarkdownRenderer;
     const ICONS = window.GeminiToolbarIcons;
 
     // Simple helper
@@ -26,7 +23,7 @@
             return this.isPinned;
         }
 
-        async show(rect, contextText, title, resetDrag = null) {
+        async show(rect, contextText, title, resetDrag = null, mousePoint = null) {
             if (!this.elements.askWindow) return;
 
             // Load and apply saved dimensions
@@ -48,7 +45,7 @@
 
             if (!this.isPinned || !this.elements.askWindow.classList.contains('visible')) {
                  if (resetDrag) resetDrag();
-                 Utils.positionElement(this.elements.askWindow, rect, true, this.isPinned);
+                 Utils.positionElement(this.elements.askWindow, rect, true, this.isPinned, mousePoint);
             }
             
             // Reset Content
@@ -85,7 +82,7 @@
             if (this.elements.footerActions) this.elements.footerActions.classList.add('hidden');
         }
 
-        showResult(text, title, isStreaming = false, isHtml = false) {
+        showResult(htmlContent, title, isStreaming = false) {
             if (!this.elements.askWindow) return;
             
             if (title) this.elements.windowTitle.textContent = title;
@@ -98,52 +95,35 @@
                 shouldScrollBottom = distanceToBottom <= threshold;
             }
             
-            if (isHtml) {
-                this.elements.resultText.innerHTML = text;
-            } else {
-                this.elements.resultText.innerHTML = MarkdownRenderer.render(text);
-            }
-            
-            // Try to Render Math using KaTeX if available in context (unlikely in isolated world but harmless)
-            if (window.renderMathInElement) {
-                try {
-                    window.renderMathInElement(this.elements.resultText, {
-                        delimiters: [
-                            {left: '$$', right: '$$', display: true},
-                            {left: '$', right: '$', display: false},
-                            {left: '\\(', right: '\\)', display: false},
-                            {left: '\\[', right: '\\]', display: true}
-                        ],
-                        throwOnError: false
-                    });
-                } catch (e) {
-                    console.warn("Math Render Error:", e);
-                }
-            }
+            // Content is now always HTML rendered via Bridge (using marked/katex/highlight.js)
+            this.elements.resultText.innerHTML = htmlContent;
 
             // Ensure Footer is visible
             if (this.elements.windowFooter) this.elements.windowFooter.classList.remove('hidden');
 
-            if (isStreaming) {
-                // Show Stop
-                if (this.elements.footerStop) this.elements.footerStop.classList.remove('hidden');
-                if (this.elements.footerActions) this.elements.footerActions.classList.add('hidden');
-            } else {
-                // Done: Show Actions
-                if (text) {
-                    if (this.elements.footerStop) this.elements.footerStop.classList.add('hidden');
-                    if (this.elements.footerActions) this.elements.footerActions.classList.remove('hidden');
-                    
-                    // Reset Copy Icon
-                    if (this.elements.buttons.copy) this.elements.buttons.copy.innerHTML = ICONS.COPY;
-                } else {
-                    // Empty and not streaming
-                    if (this.elements.windowFooter) this.elements.windowFooter.classList.add('hidden');
-                }
+            this.updateStreamingState(isStreaming);
+
+            if (!isStreaming && !htmlContent) {
+                // Empty and not streaming
+                if (this.elements.windowFooter) this.elements.windowFooter.classList.add('hidden');
             }
 
             if (resultArea && shouldScrollBottom) {
                 resultArea.scrollTop = resultArea.scrollHeight;
+            }
+        }
+
+        updateStreamingState(isStreaming) {
+            if (!this.elements.askWindow) return;
+            
+            if (isStreaming) {
+                if (this.elements.footerStop) this.elements.footerStop.classList.remove('hidden');
+                if (this.elements.footerActions) this.elements.footerActions.classList.add('hidden');
+            } else {
+                if (this.elements.footerStop) this.elements.footerStop.classList.add('hidden');
+                if (this.elements.footerActions) this.elements.footerActions.classList.remove('hidden');
+                // Reset Copy Icon
+                if (this.elements.buttons.copy) this.elements.buttons.copy.innerHTML = ICONS.COPY;
             }
         }
 

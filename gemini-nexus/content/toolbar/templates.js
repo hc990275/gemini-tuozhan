@@ -1,4 +1,3 @@
-
 // content/toolbar/templates.js
 (function() {
     const ICONS = window.GeminiToolbarIcons;
@@ -27,7 +26,17 @@
         replace: isZh ? "替换" : "Replace",
         replaceTooltip: isZh ? "替换选中文本" : "Replace selected text",
         copyResult: isZh ? "复制结果" : "Copy Result",
-        stopGenerating: isZh ? "停止生成" : "Stop generating"
+        stopGenerating: isZh ? "停止生成" : "Stop generating",
+        
+        // AI Tools Menu
+        aiTools: isZh ? "AI 工具" : "AI Tools",
+        chatWithImage: isZh ? "带图片聊天" : "Chat with image",
+        describeImage: isZh ? "描述图片" : "Describe image",
+        extractText: isZh ? "提取文本" : "Extract text",
+        imageTools: isZh ? "图像工具" : "Image tools",
+        removeBg: isZh ? "背景移除" : "Remove background",
+        removeText: isZh ? "文字移除" : "Remove text",
+        upscale: isZh ? "画质提升" : "Upscale"
     };
 
     window.GeminiToolbarTemplates = {
@@ -36,6 +45,7 @@
             
             <!-- Quick Actions Toolbar (Dark Theme) -->
             <div class="toolbar" id="toolbar">
+                <div class="toolbar-drag-handle" id="toolbar-drag">${ICONS.DRAG}</div>
                 <button class="btn" id="btn-ask" title="${t.askAi}">${ICONS.LOGO}</button>
                 <button class="btn" id="btn-copy" title="${t.copy}">${ICONS.COPY}</button>
                 <button class="btn hidden" id="btn-grammar" title="${t.fixGrammar}">${ICONS.GRAMMAR}</button>
@@ -44,9 +54,33 @@
                 <button class="btn" id="btn-summarize" title="${t.summarize}">${ICONS.SUMMARIZE}</button>
             </div>
 
-            <!-- Image Button -->
-            <div class="image-btn" id="image-btn" title="${t.askImage}">
-                ${ICONS.IMAGE_EYE}
+            <!-- Image Button / AI Tools Menu -->
+            <div class="image-btn" id="image-btn">
+                <div class="ai-tool-trigger" title="${t.aiTools}">
+                    ${ICONS.LOGO}
+                </div>
+                <div class="ai-tool-menu">
+                    <div class="menu-item" id="btn-image-chat">
+                        ${ICONS.CHAT_BUBBLE} <span>${t.chatWithImage}</span>
+                    </div>
+                    <div class="menu-item" id="btn-image-describe">
+                        ${ICONS.IMAGE_EYE} <span>${t.describeImage}</span>
+                    </div>
+                    <div class="menu-item" id="btn-image-extract">
+                        ${ICONS.SCAN_TEXT} <span>${t.extractText}</span>
+                    </div>
+                    
+                    <div class="menu-item has-submenu">
+                        ${ICONS.TOOLS} <span>${t.imageTools}</span>
+                        <div class="submenu-arrow">${ICONS.CHEVRON_RIGHT}</div>
+                        
+                        <div class="submenu">
+                            <div class="menu-item" id="btn-image-remove-bg">${ICONS.REMOVE_BG} <span>${t.removeBg}</span></div>
+                            <div class="menu-item" id="btn-image-remove-text">${ICONS.REMOVE_TEXT} <span>${t.removeText}</span></div>
+                            <div class="menu-item" id="btn-image-upscale">${ICONS.UPSCALE} <span>${t.upscale}</span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Main Ask Window (Light Theme, Resizable) -->

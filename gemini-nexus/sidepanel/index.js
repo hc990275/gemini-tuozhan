@@ -23,7 +23,8 @@ chrome.storage.local.get([
     'geminiSessions', 
     'pendingSessionId', 
     'geminiShortcuts',
-    'geminiModel'
+    'geminiModel',
+    'pendingImage'
 ], (result) => {
     preFetchedData = result;
     trySendInitData();
@@ -73,6 +74,16 @@ function trySendInitData() {
             chrome.storage.local.remove('pendingSessionId');
             delete preFetchedData.pendingSessionId;
         }
+
+        // Handle Pending Image (Screenshot)
+        if (preFetchedData.pendingImage) {
+            win.postMessage({
+                action: 'BACKGROUND_MESSAGE',
+                payload: preFetchedData.pendingImage
+            }, '*');
+            chrome.storage.local.remove('pendingImage');
+            delete preFetchedData.pendingImage;
+        }
     }
 
     // Push Language (Confirming storage value)
@@ -114,6 +125,13 @@ window.addEventListener('message', (event) => {
         return;
     }
     
+    // --- Open Full Page in New Tab ---
+    if (action === 'OPEN_FULL_PAGE') {
+        const url = chrome.runtime.getURL('sidepanel/index.html');
+        chrome.tabs.create({ url });
+        return;
+    }
+    
     // --- Standard Message Forwarding ---
     
     if (action === 'FORWARD_TO_BACKGROUND') {
@@ -121,6 +139,17 @@ window.addEventListener('message', (event) => {
     }
     
     // --- Data Requests from Sandbox ---
+
+    if (action === 'DOWNLOAD_IMAGE') {
+        const { url, filename } = payload;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+    }
 
     if (action === 'GET_THEME') {
         const theme = localStorage.getItem('geminiTheme') || 'system';
@@ -140,6 +169,18 @@ window.addEventListener('message', (event) => {
                 payload: lang
             }, '*');
         }
+    }
+    
+    if (action === 'GET_TEXT_SELECTION') {
+        chrome.storage.local.get(['geminiTextSelectionEnabled'], (res) => {
+            const enabled = res.geminiTextSelectionEnabled !== false; // Default true
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({
+                    action: 'RESTORE_TEXT_SELECTION',
+                    payload: enabled
+                }, '*');
+            }
+        });
     }
 
     // --- Sync Storage Updates back to Local Cache (For Speed next time) ---
@@ -163,6 +204,9 @@ window.addEventListener('message', (event) => {
     if (action === 'SAVE_LANGUAGE') {
         chrome.storage.local.set({ geminiLanguage: payload });
         localStorage.setItem('geminiLanguage', payload); // Cache for Sync Load
+    }
+    if (action === 'SAVE_TEXT_SELECTION') {
+        chrome.storage.local.set({ geminiTextSelectionEnabled: payload });
     }
 });
 

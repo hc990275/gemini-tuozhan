@@ -1,4 +1,8 @@
 
+
+
+
+
 // content/toolbar/actions.js
 
 class ToolbarActions {
@@ -14,11 +18,76 @@ class ToolbarActions {
 
     // --- Business Logic ---
 
-    async handleImageAnalyze(imgUrl, rect, model = "gemini-2.5-flash") {
-        const title = this.isChinese() ? "图片分析" : "Image Analysis";
-        const loadingMsg = this.isChinese() ? "正在分析图片内容..." : "Analyzing image content...";
-        const inputVal = this.isChinese() ? "分析图片内容" : "Analyze image";
-        const prompt = this.isChinese() ? "请详细分析并描述这张图片的内容。" : "Please analyze and describe the content of this image in detail.";
+    /**
+     * Handles Image Prompts (Screenshot, OCR, Analysis)
+     * @param {string} imgBase64 - Image Data URL
+     * @param {object} rect - Display Position
+     * @param {string} mode - 'ocr' | 'translate' | 'snip' | 'analyze' | 'upscale' | 'remove_text' | 'remove_bg'
+     * @param {string} model - Model Name
+     */
+    async handleImagePrompt(imgBase64, rect, mode, model = "gemini-2.5-flash") {
+        const isZh = this.isChinese();
+        let title, prompt, loadingMsg, inputVal;
+
+        switch (mode) {
+            case 'ocr':
+                title = isZh ? "OCR 文字提取" : "OCR Extraction";
+                prompt = isZh ? 
+                    "请识别并提取这张图片中的文字 (OCR)。仅输出识别到的文本内容，不需要任何解释。" : 
+                    "Please OCR this image. Extract the text content exactly as is, without any explanation.";
+                loadingMsg = isZh ? "正在识别文字..." : "Extracting text...";
+                inputVal = isZh ? "文字提取" : "OCR Extract";
+                break;
+            case 'translate':
+                title = isZh ? "截图翻译" : "Image Translate";
+                prompt = isZh ? 
+                    "请识别这张图片中的文字并将其翻译成中文。仅输出翻译后的内容。" : 
+                    "Please extract the text from this image and translate it into English. Output ONLY the translation.";
+                loadingMsg = isZh ? "正在翻译..." : "Translating...";
+                inputVal = isZh ? "截图翻译" : "Image Translate";
+                break;
+            case 'analyze': // General Image Analysis (from Hover button)
+                title = isZh ? "图片分析" : "Image Analysis";
+                prompt = isZh ? 
+                    "请详细分析并描述这张图片的内容。" : 
+                    "Please analyze and describe the content of this image in detail.";
+                loadingMsg = isZh ? "正在分析图片内容..." : "Analyzing image content...";
+                inputVal = isZh ? "分析图片内容" : "Analyze image";
+                break;
+            case 'upscale':
+                title = isZh ? "画质提升" : "Upscale Image";
+                prompt = isZh ? 
+                    "请根据这张图片生成一个更高清晰度、更高分辨率的版本 (Upscale)。" : 
+                    "Please generate a higher quality, higher resolution version of this image (Upscale).";
+                loadingMsg = isZh ? "正在提升画质..." : "Upscaling...";
+                inputVal = isZh ? "画质提升" : "Upscale";
+                break;
+            case 'remove_text':
+                title = isZh ? "文字移除" : "Remove Text";
+                prompt = isZh ? 
+                    "请将这张图片中的所有文字移除，并填充背景，生成一张干净的图片。" : 
+                    "Please remove all text from this image, inpaint the background, and generate the clean image.";
+                loadingMsg = isZh ? "正在移除文字..." : "Removing text...";
+                inputVal = isZh ? "文字移除" : "Remove Text";
+                break;
+            case 'remove_bg':
+                title = isZh ? "背景移除" : "Remove Background";
+                prompt = isZh ? 
+                    "请移除这张图片的背景。生成一张带有透明背景的主体图片。" : 
+                    "Please remove the background from this image. Generate a new image of the subject on a transparent background.";
+                loadingMsg = isZh ? "正在移除背景..." : "Removing background...";
+                inputVal = isZh ? "背景移除" : "Remove Background";
+                break;
+            case 'snip': // Fallback / Generic Snip
+            default:
+                title = isZh ? "截图分析" : "Snip Analysis";
+                prompt = isZh ? 
+                    "请详细描述这张截图的内容。" : 
+                    "Please describe the content of this screenshot in detail.";
+                loadingMsg = isZh ? "正在分析截图..." : "Analyzing snip...";
+                inputVal = isZh ? "截图分析" : "Analyze Snip";
+                break;
+        }
 
         await this.ui.showAskWindow(rect, loadingMsg, title);
         this.ui.showLoading(loadingMsg);
@@ -26,7 +95,7 @@ class ToolbarActions {
 
         const msg = {
             action: "QUICK_ASK_IMAGE",
-            url: imgUrl,
+            url: imgBase64,
             text: prompt,
             model: model
         };
@@ -35,7 +104,7 @@ class ToolbarActions {
         chrome.runtime.sendMessage(msg);
     }
 
-    async handleQuickAction(actionType, selection, rect, model = "gemini-2.5-flash") {
+    async handleQuickAction(actionType, selection, rect, model = "gemini-2.5-flash", mousePoint = null) {
         const prompt = this.getPrompt(actionType, selection);
 
         let title = this.isChinese() ? '解释' : 'Explain';
@@ -57,7 +126,7 @@ class ToolbarActions {
         }
 
         this.ui.hide();
-        await this.ui.showAskWindow(rect, selection, title);
+        await this.ui.showAskWindow(rect, selection, title, mousePoint);
         this.ui.showLoading(loadingMsg);
 
         this.ui.setInputValue(inputPlaceholder);
@@ -76,6 +145,13 @@ class ToolbarActions {
         this.ui.showLoading();
         
         let prompt = question;
+        let includePageContext = false;
+
+        if (context === "__PAGE_CONTEXT_FORCE__") {
+            includePageContext = true;
+            context = null; 
+        }
+
         if (context) {
             prompt = `Context:\n${context}\n\nQuestion: ${question}`;
         }
@@ -84,7 +160,8 @@ class ToolbarActions {
             action: "QUICK_ASK",
             text: prompt,
             model: model,
-            sessionId: sessionId
+            sessionId: sessionId,
+            includePageContext: includePageContext
         };
         
         this.lastRequest = msg;
@@ -94,7 +171,6 @@ class ToolbarActions {
     handleRetry() {
         if (!this.lastRequest) return;
         
-        // Fix: Update model in lastRequest to match currently selected model in UI
         const currentModel = this.ui.getSelectedModel();
         if (currentModel) {
             this.lastRequest.model = currentModel;

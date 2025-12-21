@@ -1,5 +1,4 @@
 
-
 // sandbox/core/i18n.js
 
 export const translations = {
@@ -14,11 +13,15 @@ export const translations = {
         "quote": "Quote",
         "ocr": "OCR",
         "snip": "Snip",
+        "screenshotTranslate": "Translate",
         "uploadImage": "Upload Image",
         "askPlaceholder": "Ask Gemini...",
         "sendMessage": "Send message",
         "stopGenerating": "Stop generating",
         "settingsTitle": "Settings",
+        "general": "General",
+        "textSelection": "Text Selection Toolbar",
+        "textSelectionDesc": "Show floating toolbar when selecting text.",
         "appearance": "Appearance",
         "theme": "Theme",
         "language": "Language",
@@ -43,11 +46,13 @@ export const translations = {
         "imageSent": "Image sent",
         "selectOcr": "Select area for OCR...",
         "selectSnip": "Select area to capture...",
+        "selectTranslate": "Select area to translate...",
         "processingImage": "Processing image...",
         "failedLoadImage": "Failed to load image.",
         "errorScreenshot": "Error processing screenshot.",
         "noTextSelected": "No text selected on page.",
         "ocrPrompt": "Please OCR this image. Extract the text content exactly as is, without any explanation.",
+        "screenshotTranslatePrompt": "Please extract the text from this image and translate it into English. Output ONLY the translation.",
         "loadingImage": "Loading image...",
         
         // Tooltips
@@ -56,6 +61,7 @@ export const translations = {
         "pageContextTooltip": "Toggle chat with page content",
         "quoteTooltip": "Quote selected text from page",
         "ocrTooltip": "Capture area and extract text",
+        "screenshotTranslateTooltip": "Capture area and translate text",
         "snipTooltip": "Capture area to input",
         "removeImage": "Remove image",
         "uploadImageTooltip": "Upload Image",
@@ -64,7 +70,8 @@ export const translations = {
         "resetZoom": "Fit to Screen",
         "downloadImage": "Download Image",
         "close": "Close",
-        "sendMessageTooltip": "Send message"
+        "sendMessageTooltip": "Send message",
+        "openFullPageTooltip": "Open in full page"
     },
     zh: {
         "searchPlaceholder": "搜索对话",
@@ -75,13 +82,17 @@ export const translations = {
         "newChat": "新对话",
         "pageContext": "网页",
         "quote": "引用",
-        "ocr": "文字提取",
+        "ocr": "OCR",
         "snip": "截图",
+        "screenshotTranslate": "截图翻译",
         "uploadImage": "上传图片",
         "askPlaceholder": "询问 Gemini...",
         "sendMessage": "发送消息",
         "stopGenerating": "停止生成",
         "settingsTitle": "设置",
+        "general": "常规",
+        "textSelection": "划词工具栏",
+        "textSelectionDesc": "选中网页文本时显示悬浮工具栏。",
         "appearance": "外观",
         "theme": "主题",
         "language": "语言",
@@ -106,11 +117,13 @@ export const translations = {
         "imageSent": "图片已发送",
         "selectOcr": "请框选要识别的区域...",
         "selectSnip": "请框选要截图的区域...",
+        "selectTranslate": "请框选要翻译的区域...",
         "processingImage": "正在处理图片...",
         "failedLoadImage": "图片加载失败。",
         "errorScreenshot": "截图处理出错。",
         "noTextSelected": "页面上未选择文本。",
         "ocrPrompt": "请识别并提取这张图片中的文字 (OCR)。仅输出识别到的文本内容，不需要任何解释。",
+        "screenshotTranslatePrompt": "请识别这张图片中的文字并将其翻译成中文。仅输出翻译后的内容。",
         "loadingImage": "正在加载图片...",
 
         // Tooltips
@@ -119,6 +132,7 @@ export const translations = {
         "pageContextTooltip": "切换网页上下文对话",
         "quoteTooltip": "引用网页选中内容",
         "ocrTooltip": "区域截图 (OCR文字提取)",
+        "screenshotTranslateTooltip": "截取区域并翻译文字",
         "snipTooltip": "区域截图 (作为图片输入)",
         "removeImage": "移除图片",
         "uploadImageTooltip": "上传图片",
@@ -127,7 +141,8 @@ export const translations = {
         "resetZoom": "适应屏幕",
         "downloadImage": "下载图片",
         "close": "关闭",
-        "sendMessageTooltip": "发送消息"
+        "sendMessageTooltip": "发送消息",
+        "openFullPageTooltip": "新标签页打开"
     }
 };
 

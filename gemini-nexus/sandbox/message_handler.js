@@ -3,6 +3,7 @@
 import { appendMessage } from './render/message.js';
 import { cropImage } from '../lib/crop_utils.js';
 import { t } from './core/i18n.js';
+import { WatermarkRemover } from '../lib/watermark_remover.js';
 
 export class MessageHandler {
     constructor(sessionManager, uiController, imageManager, appController) {
@@ -26,9 +27,15 @@ export class MessageHandler {
             return;
         }
 
-        // 2. Image Fetch Result
+        // 2. Image Fetch Result (For User Uploads)
         if (request.action === "FETCH_IMAGE_RESULT") {
             this.handleImageResult(request);
+            return;
+        }
+
+        // 2.1 Generated Image Result (Proxy Fetch for Display)
+        if (request.action === "GENERATED_IMAGE_RESULT") {
+            await this.handleGeneratedImageResult(request);
             return;
         }
 
@@ -41,7 +48,11 @@ export class MessageHandler {
         // 4. Mode Sync (from Context Menu)
         if (request.action === "SET_SIDEBAR_CAPTURE_MODE") {
             this.app.setCaptureMode(request.mode);
-            this.ui.updateStatus(request.mode === 'ocr' ? t('selectOcr') : t('selectSnip'));
+            let statusText = t('selectSnip');
+            if (request.mode === 'ocr') statusText = t('selectOcr');
+            if (request.mode === 'screenshot_translate') statusText = t('selectTranslate');
+            
+            this.ui.updateStatus(statusText);
             return;
         }
 
@@ -61,13 +72,11 @@ export class MessageHandler {
     handleStreamUpdate(request) {
         // If we don't have a bubble yet, create one
         if (!this.streamingBubble) {
-            this.streamingBubble = appendMessage(this.ui.historyDiv, "", 'ai');
+            this.streamingBubble = appendMessage(this.ui.historyDiv, "", 'ai', null, "");
         }
         
-        // Update content if text exists
-        if (request.text !== undefined) {
-             this.streamingBubble.update(request.text);
-        }
+        // Update content if text or thoughts exist
+        this.streamingBubble.update(request.text, request.thoughts);
         
         // Ensure UI state reflects generation
         if (!this.app.isGenerating) {
@@ -82,30 +91,36 @@ export class MessageHandler {
         
         const session = this.sessionManager.getCurrentSession();
         if (session) {
+            // Note: We do NOT save to sessionManager/storage here anymore.
+            // The background script saves the AI response to storage and broadcasts 'SESSIONS_UPDATED'.
+            // The AppController handles that broadcast to keep data in sync.
+            // We just ensure the UI is visually complete here.
+
             if (request.status === 'success') {
-                // Save AI Message to session storage
-                this.sessionManager.addMessage(session.id, 'ai', request.text);
+                // Although session data comes from background, we might want to ensure context matches locally
+                // just in case further user prompts happen before SESSIONS_UPDATED arrives (rare)
                 this.sessionManager.updateContext(session.id, request.context);
-                this.app.persistSessions();
             }
 
             // Update UI
             if (this.streamingBubble) {
-                // Finalize the streaming bubble with complete text
-                if (request.text) {
-                     this.streamingBubble.update(request.text);
+                // Finalize the streaming bubble with complete text and thoughts
+                this.streamingBubble.update(request.text, request.thoughts);
+                
+                // Inject images if any
+                if (request.images && request.images.length > 0) {
+                    this.streamingBubble.addImages(request.images);
                 }
                 
                 if (request.status !== 'success') {
-                    // Optionally style error? For now text update is enough.
-                    // If text is "Error: ...", render logic handles it as text.
+                    // Optionally style error
                 }
                 
                 // Clear reference
                 this.streamingBubble = null;
             } else {
                 // Fallback if no stream occurred (or single short response)
-                appendMessage(this.ui.historyDiv, request.text, 'ai');
+                appendMessage(this.ui.historyDiv, request.text, 'ai', request.images, request.thoughts);
             }
         }
     }
@@ -117,7 +132,32 @@ export class MessageHandler {
             this.ui.updateStatus(t('failedLoadImage'));
             setTimeout(() => this.ui.updateStatus(""), 3000);
         } else {
-            this.imageManager.setImage(request.base64, request.type, request.name);
+            this.imageManager.setFile(request.base64, request.type, request.name);
+        }
+    }
+
+    async handleGeneratedImageResult(request) {
+        // Find the placeholder image by ID
+        const img = document.querySelector(`img[data-req-id="${request.reqId}"]`);
+        if (img) {
+            if (request.base64) {
+                try {
+                    // Apply Watermark Removal
+                    const cleanedBase64 = await WatermarkRemover.process(request.base64);
+                    img.src = cleanedBase64;
+                } catch (e) {
+                    console.warn("Watermark removal failed, using original", e);
+                    img.src = request.base64;
+                }
+                
+                img.classList.remove('loading');
+                img.style.minHeight = "auto"; 
+            } else {
+                // Handle error visually
+                img.style.background = "#ffebee"; // Light red
+                img.alt = "Failed to load image";
+                console.warn("Generated image load failed:", request.error);
+            }
         }
     }
 
@@ -125,13 +165,17 @@ export class MessageHandler {
         this.ui.updateStatus(t('processingImage'));
         try {
             const croppedBase64 = await cropImage(request.image, request.area);
-            this.imageManager.setImage(croppedBase64, 'image/png', 'snip.png');
+            this.imageManager.setFile(croppedBase64, 'image/png', 'snip.png');
             
             if (this.app.captureMode === 'ocr') {
                 // Change prompt to localized OCR instructions
                 this.ui.inputFn.value = t('ocrPrompt');
                 // Auto-send via the main controller
                 this.app.handleSendMessage(); 
+            } else if (this.app.captureMode === 'screenshot_translate') {
+                // Change prompt to localized Translate instructions
+                this.ui.inputFn.value = t('screenshotTranslatePrompt');
+                this.app.handleSendMessage();
             } else {
                 this.ui.updateStatus("");
                 this.ui.inputFn.focus();

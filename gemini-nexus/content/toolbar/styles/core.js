@@ -1,7 +1,6 @@
-
-// content/toolbar/styles/core.js
 (function() {
-    window.GeminiStylesCore = `
+    window.GeminiStyles = window.GeminiStyles || {};
+    window.GeminiStyles.Core = `
         /* Shared Resets */
         button { font-family: inherit; }
         

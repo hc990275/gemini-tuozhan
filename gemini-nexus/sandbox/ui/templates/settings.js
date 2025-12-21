@@ -1,5 +1,4 @@
 
-
 export const SettingsTemplate = `
     <!-- SETTINGS -->
     <div id="settings-modal" class="settings-modal">
@@ -9,6 +8,17 @@ export const SettingsTemplate = `
                 <button id="close-settings" class="icon-btn small" data-i18n-title="close" title="Close">✕</button>
             </div>
             <div class="settings-body">
+                <div class="setting-group">
+                    <h4 data-i18n="general">General</h4>
+                    <div class="shortcut-row" style="margin-bottom: 8px;">
+                        <div style="flex: 1;">
+                            <label data-i18n="textSelection" style="font-weight: 500; display: block; margin-bottom: 2px;">Text Selection Toolbar</label>
+                            <span class="setting-desc" data-i18n="textSelectionDesc">Show floating toolbar when selecting text.</span>
+                        </div>
+                        <input type="checkbox" id="text-selection-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                    </div>
+                </div>
+
                 <div class="setting-group">
                     <h4 data-i18n="appearance">Appearance</h4>
                     <div class="shortcut-row">
@@ -56,7 +66,7 @@ export const SettingsTemplate = `
 
                 <div class="setting-group">
                     <h4 data-i18n="about">About</h4>
-                    <p class="setting-info"><strong>Gemini Nexus</strong> v3.0.0</p>
+                    <p class="setting-info"><strong>Gemini Nexus</strong> v3.1.0</p>
                     
                     <div style="display: flex; gap: 16px; margin-top: 8px;">
                         <a href="https://github.com/yeahhe365/gemini-nexus" target="_blank" class="github-link" style="margin-top: 0;">

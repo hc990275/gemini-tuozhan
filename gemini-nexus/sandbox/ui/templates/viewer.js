@@ -1,8 +1,9 @@
+
 export const ViewerTemplate = `
     <!-- IMAGE VIEWER -->
     <div id="image-viewer" class="image-viewer">
         <div class="viewer-container" id="viewer-container">
-            <img class="viewer-content" id="full-image" draggable="false">
+            <img class="viewer-content" id="full-image" draggable="false" referrerpolicy="no-referrer">
         </div>
         
         <div class="viewer-toolbar">

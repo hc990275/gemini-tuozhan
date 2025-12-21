@@ -1,3 +1,4 @@
+
 // background/history.js
 import { generateUUID } from '../lib/utils.js';
 
@@ -5,15 +6,25 @@ import { generateUUID } from '../lib/utils.js';
  * Saves a completed interaction to the chat history in local storage.
  * @param {string} text - The user's prompt.
  * @param {object} result - The result object from the session manager.
- * @param {object} imageObj - Optional image data { base64 }.
+ * @param {Array|object} filesObj - Optional file data { base64 } or array of such objects.
  * @returns {object} The new session object or null on error.
  */
-export async function saveToHistory(text, result, imageObj = null) {
+export async function saveToHistory(text, result, filesObj = null) {
     try {
         const { geminiSessions = [] } = await chrome.storage.local.get(['geminiSessions']);
         
         const sessionId = generateUUID();
         const title = text.length > 30 ? text.substring(0, 30) + "..." : text;
+
+        // Normalize image data to array of base64 strings
+        let storedImages = null;
+        if (filesObj) {
+            if (Array.isArray(filesObj)) {
+                storedImages = filesObj.map(f => f.base64);
+            } else if (filesObj.base64) {
+                storedImages = [filesObj.base64];
+            }
+        }
 
         const newSession = {
             id: sessionId,
@@ -23,11 +34,13 @@ export async function saveToHistory(text, result, imageObj = null) {
                 {
                     role: 'user',
                     text: text,
-                    image: imageObj ? imageObj.base64 : null
+                    image: storedImages // Now stores array of base64 strings
                 },
                 {
                     role: 'ai',
-                    text: result.text
+                    text: result.text,
+                    thoughts: result.thoughts, // Save thoughts if present
+                    generatedImages: result.images // Save generated images
                 }
             ],
             context: result.context
@@ -46,5 +59,48 @@ export async function saveToHistory(text, result, imageObj = null) {
     } catch(e) {
         console.error("Error saving history:", e);
         return null;
+    }
+}
+
+/**
+ * Appends an AI response to an existing session in local storage.
+ * Critical for ensuring history is saved even if the UI is closed during generation.
+ * @param {string} sessionId 
+ * @param {object} result 
+ */
+export async function appendAiMessage(sessionId, result) {
+    try {
+        const { geminiSessions = [] } = await chrome.storage.local.get(['geminiSessions']);
+        const sessionIndex = geminiSessions.findIndex(s => s.id === sessionId);
+        
+        if (sessionIndex !== -1) {
+            const session = geminiSessions[sessionIndex];
+            
+            session.messages.push({
+                role: 'ai',
+                text: result.text,
+                thoughts: result.thoughts,
+                generatedImages: result.images
+            });
+            session.context = result.context; // Update context
+            session.timestamp = Date.now();
+            
+            // Move to top
+            geminiSessions.splice(sessionIndex, 1);
+            geminiSessions.unshift(session);
+            
+            await chrome.storage.local.set({ geminiSessions });
+            
+            chrome.runtime.sendMessage({ 
+                action: "SESSIONS_UPDATED", 
+                sessions: geminiSessions 
+            }).catch(() => {});
+            
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error("Error appending history:", e);
+        return false;
     }
 }
